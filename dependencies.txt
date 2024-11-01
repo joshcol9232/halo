@@ -1,0 +1,4 @@
+- pytest
+- pytest-mpi
+- numpy
+- mpi4py
