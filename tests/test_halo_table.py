@@ -22,25 +22,25 @@ class TestHaloTable(unittest.TestCase):
 
         np.testing.assert_allclose(table_pe0.table, KGO, err_msg="HaloTable KGO fail: \n%s\n----------------------------\n%s")
 
+    @pytest.mark.mpi(min_size=2)
     def test_simple_halo(self):
         # Simplest case of a mesh:
         # | 0 | 1 |
         # Split into two PEs. 0 and 1, with a halo depth of 1
 
-        pe0 = Mesh(np.array([0]), np.array([1]))
-        pe1 = Mesh(np.array([1]), np.array([0])) 
+        if MPI.COMM_WORLD.rank == 0:
+            local_mesh_0 = Mesh(np.array([0]), np.array([1]))
+            field = local_mesh_0.make_field()
+            # Data is [own, halo]
+            field.data[0] = 100
+            field.data[1] = -100
 
-        field0 = pe0.make_field()
-        # Data is [own, halo]
-        field0.data[0] = 100
-        field0.data[1] = -100
+        elif MPI.COMM_WORLD.rank == 1:
+            local_mesh_1 = Mesh(np.array([1]), np.array([0])) 
+            field = local_mesh_1.make_field()
+            field.data[0] = 200
+            field.data[1] = -200
 
-        field1 = pe1.make_field()
-        field1.data[0] = 200
-        field1.data[1] = -200
-
-
-
-        
+               
 
 
