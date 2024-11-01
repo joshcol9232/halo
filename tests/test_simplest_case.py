@@ -1,6 +1,8 @@
 import unittest
 
-from halo import Grid3x3
+from meshing import Grid3x3
+import logger
+
 from mpi4py import MPI
 import numpy as np
 import pytest
@@ -14,13 +16,12 @@ import pytest
 
 class Test3x3(unittest.TestCase):
     grid = Grid3x3()
-    partition = grid.partition()
+    mesh = grid.partition()
 
     @pytest.mark.mpi(min_size=9)
-    def test_partitioning(self):
-        assert self.partition[0] == MPI.COMM_WORLD.Get_rank()
+    def test_owned_partitioning(self):
+        assert self.mesh.owned_indices[0] == MPI.COMM_WORLD.Get_rank()
         
-    @pytest.mark.mpi(min_size=9)
     def test_relative_at(self):
         assert self.grid.relative_at(4, "W") == 3
         assert self.grid.relative_at(4, "S") == 7
@@ -32,7 +33,6 @@ class Test3x3(unittest.TestCase):
         assert self.grid.relative_at(0, "E") == 1
         assert self.grid.relative_at(0, "N") == 6
 
-    @pytest.mark.mpi(min_size=9)
     def test_halo(self):
         KGO = np.array([3, 7, 5, 1])
 
@@ -40,7 +40,6 @@ class Test3x3(unittest.TestCase):
         halo = self.grid.build_halo(owned_indices)
 
         np.testing.assert_allclose(halo, KGO, err_msg="Halo KGO fail: \n%s\n----------------------------\n%s")
-
 
     @pytest.mark.mpi(min_size=9)
     def test_3x3_9PE(self):
@@ -56,7 +55,14 @@ class Test3x3(unittest.TestCase):
         target indices => [ 2, 3, 1, 6 ]   (W, S, E, N halo region).
         """
         # ---
-        #np.testing.assert_allclose([], KGO_VERTS, err_msg="Connection KGO fail: \n%s\n----------------------------\n%s" % (verts, KGO_VERTS))
+
+        field = self.mesh.make_field()
+        field.owned()[:] = MPI.COMM_WORLD.rank
+        field.halo_exchange()
+
+        logger.log(field.halo())
+        
+
 
 if __name__ == '__main__':
     unittest.main()
